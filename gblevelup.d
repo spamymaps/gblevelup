@@ -4,7 +4,8 @@ import std.array;
 import std.conv;
 
 // |level|common|rare|epic|bux|xp|xptonextlevel|
-enum xpData = `|1|1|1|1|5|4|8|
+enum xpData = 
+`|1|1|1|1|5|4|8|
 |2|2|1|1|6|5|10|
 |3|3|1|1|7|6|14|
 |4|4|1|1|8|7|20|
@@ -45,7 +46,14 @@ enum xpData = `|1|1|1|1|5|4|8|
 |39|1300|300|44|120000|1900|3300|
 |40|1600|350|48|140000|2100|3500|
 |41|2000|400|52|160000|2300|3800|
-|42|2500|500|56|180000|2500|4100|`;
+|42|2500|500|56|180000|2500|4100|
+|43|3000|600|60|200000|2700|4500|
+|44|3500|700|64|220000|2900|5000|
+|45|4000|800|68|240000|3100|6000|
+|46|4500|900|72|260000|3300|7000|
+|47|5000|1000|76|280000|3500|8000|
+|48|5500|1100|80|300000|3700|10000|
+|49|6000|1200|84|320000|3900|12000|`;
 
 // |level|cards|bux|xp|
 enum powerupData =
@@ -102,94 +110,113 @@ struct state
 {
     // how many powerups are at the given level
     int[12] powerups;
-    int level;
-    int skins;
     int xp;
 }
 
-
-
-// is there a powerup added at the given level
-bool powerupAtLevel(int level)
+struct buxcards
 {
-    return (level - 1) % 4 == 0;
+    int bux;
+    int cards;
+
+    int opCmp(buxcards other) const
+    {
+        if(other.bux == bux)
+        {
+            if(other.cards == cards)
+                return 0;
+            return other.cards > cards ? -1 : 1;
+        }
+        return other.bux > bux ? -1 : 1;
+    }
+}
+
+int buyPowerup(ref state s)
+{
+    foreach(i; 0 .. powerups.length)
+    {
+        if(s.powerups[i])
+        {
+            --s.powerups[i];
+            ++s.powerups[i+1];
+            s.xp += powerups[i].xp;
+            return powerups[i].bux;
+        }
+    }
+    return 0;
 }
 
 void main(string[] args)
 {
-    auto maxlevel = args[1].to!int;
     import std.stdio;
+    auto maxlevel = args[1].to!int;
+    if(maxlevel < 1 || maxlevel > 50)
+        writeln("need level between 1 and 50");
     // first, fix the level up xp numbers, we want cumulative xp
     foreach(i; 1 .. levels.length)
         levels[i].nextLevelxp += levels[i-1].nextLevelxp;
 
-    int[state] memo;
+    buxcards[state] memo1; // current level
+    buxcards[state] memo2; // next level
     state start;
-    start.level = 1;
     start.powerups[0] = 3;
-    memo[start] = 0;
+    memo1[start] = buxcards(0, 0);
     auto maxxp = levels[$-1].nextLevelxp;
-    void update(ref state s, int bux)
+    foreach(level ; 0 .. maxlevel-1)
     {
-        if(auto v = s in memo)
+        auto ld = levels[level];
+        // are we gaining a new powerup at this level
+        auto newPowerup = ld.level > 1 && ld.level <= 37 && ((ld.level - 1) % 4 == 0);
+        foreach(curstate, baseBux; memo1)
         {
-            *v = min(*v, bux);
-        }
-        else
-        {
-            memo[s] = bux;
-        }
-    }
-    foreach(xp; 0 .. maxxp)
-    {
-        auto curKeys = memo.keys;
-        foreach(k; curKeys)
-        {
-            if(k.xp == xp)
-            {
-                auto baseBux = memo[k];
-                auto ld = levels[k.level - 1];
-                void addxp(ref state s, int xp)
-                {
-                    s.xp += xp;
-                    if(s.xp >= ld.nextLevelxp)
-                    {
-                        ++s.level;
-                        if(powerupAtLevel(s.level))
-                        {
-                            // new level 1 powerup added
-                            ++s.powerups[0];
-                        }
-                    }
-                }
-                memo.remove(k);
-                if(k.level > maxlevel)
-                    return;
-                if(k.level == maxlevel)
-                    writefln("%s => %s", k, baseBux);
-                // try adding a new hat/skin
-                auto ns = k;
-                ++ns.skins;
-                addxp(ns, ld.xp);
-                update(ns, baseBux + ld.bux);
+            if(newPowerup)
+                // new level 1 powerup
+                ++curstate.powerups[0];
 
-                // try upgrading any powerups
-                foreach(pl; 0 .. k.powerups.length - 1)
+            // maxSkins is the maximum number of skins needed to level up to
+            // the next level if all we did was buy skins.
+            int maxSkins = ((ld.nextLevelxp - curstate.xp) + ld.xp - 1) / ld.xp;
+
+skinloop:
+            foreach(skins; 0 .. maxSkins + 1)
+            {
+                // buy this many skins
+                auto newstate = curstate;
+                newstate.xp += ld.xp * skins;
+                auto newBuxCards = baseBux;
+                newBuxCards.bux += skins * ld.bux;
+                newBuxCards.cards += skins;
+                while(newstate.xp < ld.nextLevelxp)
                 {
-                    if(k.powerups[pl])
-                    {
-                        // try upgrading this one
-                        auto pu = k;
-                        --pu.powerups[pl];
-                        ++pu.powerups[pl+1];
-                        addxp(pu, powerups[pl].xp);
-                        update(pu, baseBux + powerups[pl].bux);
-                    }
+                    auto b = buyPowerup(newstate);
+                    if(b == 0)
+                        // can't buy any more powerups, so this possibility isn't valid (this probably won't happen)
+                        break skinloop;
+                    newBuxCards.bux += b;
                 }
+
+                // get to the next level
+                if(auto v = newstate in memo2)
+                {
+                    *v = min(*v, newBuxCards);
+                }
+                else
+                    memo2[newstate] = newBuxCards;
             }
         }
-    }
 
-    foreach(k, v; memo)
-        writefln("%s => %s", k, v);
+        // clear memo1, and swap the two memos
+        memo1.clear;
+        swap(memo1, memo2);
+    }
+    // find cheapest result
+    buxcards cheapest;
+    cheapest.bux = int.max;
+    foreach(k, v; memo1)
+        cheapest = min(cheapest, v);
+
+    foreach(k, v; memo1)
+    {
+        if(v == cheapest)
+            writefln("%s => %s", k, v);
+    }
 }
