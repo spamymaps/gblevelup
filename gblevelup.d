@@ -113,10 +113,9 @@ struct state
     int[12] powerups;
     int xp;
 
-    void toString(void delegate(const(char)[]) dg)
+    void printPowerups(void delegate(const(char)[]) dg)
     {
         import std.format;
-        formattedWrite(dg, "(%s xp; powerups: ", xp);
         auto fpu = powerups[]
             .enumerate
             .filter!(a => a[1] != 0);
@@ -128,6 +127,12 @@ struct state
             first = false;
             formattedWrite(dg, "%s lv%s", x[1], x[0] + 1 );
         }
+    }
+    void toString(void delegate(const(char)[]) dg)
+    {
+        import std.format;
+        formattedWrite(dg, "(%s xp; powerups: ", xp);
+        printPowerups(dg);
         dg(")");
     }
 }
@@ -136,6 +141,8 @@ struct buxcards
 {
     int bux;
     int cards;
+
+    buxcards * prev;
 
     int opCmp(buxcards other) const
     {
@@ -191,7 +198,7 @@ void main(string[] args)
         auto ld = levels[level];
         // are we gaining a new powerup at this level
         auto newPowerup = ld.level > 1 && ld.level <= 37 && ((ld.level - 1) % 4 == 0);
-        foreach(curstate, baseBux; memo1)
+        foreach(curstate, ref baseBux; memo1)
         {
             if(newPowerup)
                 // new level 1 powerup
@@ -208,6 +215,7 @@ skinloop:
                 auto newstate = curstate;
                 newstate.xp += ld.xp * skins;
                 auto newBuxCards = baseBux;
+                newBuxCards.prev = &baseBux;
                 newBuxCards.bux += skins * ld.bux;
                 newBuxCards.cards += skins;
                 while(newstate.xp < ld.nextLevelxp)
@@ -215,13 +223,16 @@ skinloop:
                     auto b = buyPowerup(newstate);
                     if(b == 0)
                         // can't buy any more powerups, so this possibility isn't valid (this probably won't happen)
-                        break skinloop;
+                        continue skinloop;
                     newBuxCards.bux += b;
                 }
 
                 // get to the next level
                 if(auto v = newstate in memo2)
                 {
+                    if(ld.level == 16 && skins == 6 && newBuxCards.bux == 5662 && newBuxCards.cards == 89 && newBuxCards < *v)
+                        writefln("here, orig state = %s, new state = %s, base bux = %s, new bux = %s", 
+                                 curstate, newstate, baseBux, newBuxCards);
                     *v = min(*v, newBuxCards);
                 }
                 else
@@ -230,8 +241,8 @@ skinloop:
         }
 
         // clear memo1, and swap the two memos
-        memo1.clear;
-        swap(memo1, memo2);
+        memo1 = memo2;
+        memo2 = null;
     }
     // find cheapest result
     buxcards cheapest;
@@ -239,9 +250,41 @@ skinloop:
     foreach(k, v; memo1)
         cheapest = min(cheapest, v);
 
+    // print the path
+    state printPath(buxcards *cur, int level)
+    {
+        if(cur.prev is null)
+            return start;
+        auto st = printPath(cur.prev, level - 1);
+        auto origst = st;
+        // print the difference between the previous level and this level
+        string powerupUpgrades;
+        auto nskins = cur.cards - cur.prev.cards;
+        import std.stdio;
+        //writefln("origBux = %s", cur.prev.bux);
+        //writefln("%s skins at level %s paid = %s", nskins, level-1, levels[level-2].bux * nskins);
+        auto buxspent = cur.prev.bux + nskins * levels[level - 2].bux;
+        st.xp += levels[level-2].xp * nskins;
+        while(buxspent < cur.bux)
+            buxspent += buyPowerup(st);
+        if(buxspent != cur.bux)
+        {
+            writefln("expected %s, but got %s, cards = %s, prev = %s, new = %s", cur.bux, buxspent, cur.cards, origst, st);
+            assert(false);
+        }
+        if(level > 1 && level <= 37 && ((level - 1) % 4 == 0))
+        {
+            // new powerup
+            ++st.powerups[0];
+        }
+        st.printPowerups((s) {powerupUpgrades ~= s;});
+        writefln("At level %s, purchase %s skins, and upgrade powerups to %s", level - 1, nskins, powerupUpgrades);
+        return st;
+    }
     foreach(k, v; memo1)
     {
-        if(v.bux == cheapest.bux)
+        if(v == cheapest)
             writefln("%s => %s", k, v);
     }
+    printPath(&cheapest, maxlevel);
 }
