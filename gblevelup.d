@@ -1,4 +1,5 @@
 import std.algorithm;
+import std.range;
 import std.string;
 import std.array;
 import std.conv;
@@ -111,6 +112,24 @@ struct state
     // how many powerups are at the given level
     int[12] powerups;
     int xp;
+
+    void toString(void delegate(const(char)[]) dg)
+    {
+        import std.format;
+        formattedWrite(dg, "(%s xp; powerups: ", xp);
+        auto fpu = powerups[]
+            .enumerate
+            .filter!(a => a[1] != 0);
+        bool first = true;
+        foreach(x; fpu)
+        {
+            if(!first)
+                dg(", ");
+            first = false;
+            formattedWrite(dg, "%s lv%s", x[1], x[0] + 1 );
+        }
+        dg(")");
+    }
 }
 
 struct buxcards
@@ -127,6 +146,12 @@ struct buxcards
             return other.cards > cards ? -1 : 1;
         }
         return other.bux > bux ? -1 : 1;
+    }
+
+    void toString(void delegate(const(char)[]) dg)
+    {
+        import std.format;
+        formattedWrite(dg, "(%s bux, %s cards purchased)", bux, cards);
     }
 }
 
@@ -216,7 +241,7 @@ skinloop:
 
     foreach(k, v; memo1)
     {
-        if(v == cheapest)
+        if(v.bux == cheapest.bux)
             writefln("%s => %s", k, v);
     }
 }
