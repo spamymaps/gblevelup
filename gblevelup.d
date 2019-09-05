@@ -177,12 +177,37 @@ int buyPowerup(ref state s)
     return 0;
 }
 
-void main(string[] args)
+int main(string[] args)
 {
     import std.stdio;
-    auto maxlevel = args[1].to!int;
+    import std.getopt; // well, it's just easier
+    int maxlevel = 50;
+    int minlevel = 1;
+    int startingxp;
+    string powerupargs = "3";
+    auto helpInformation = getopt(
+      args,
+      "max",  &maxlevel,
+      "min", &minlevel,
+      "xp", &startingxp,
+      "powerups", &powerupargs);
+
+    if (helpInformation.helpWanted)
+    {
+        defaultGetoptPrinter("Calculate golf blitz minimum bux/cards requirements to get to a specific level",
+                             helpInformation.options);
+    }
     if(maxlevel < 1 || maxlevel > 50)
-        writeln("need level between 1 and 50");
+    {
+        writeln("need max level between 1 and 50");
+        return 1;
+    }
+    if(minlevel < 1 || minlevel > maxlevel)
+    {
+        writeln("need min level between 1 and ", maxlevel);
+        return 1;
+    }
+
     // first, fix the level up xp numbers, we want cumulative xp
     foreach(i; 1 .. levels.length)
         levels[i].nextLevelxp += levels[i-1].nextLevelxp;
@@ -190,11 +215,31 @@ void main(string[] args)
     buxcards[state] memo1; // current level
     buxcards[state] memo2; // next level
     state start;
-    start.powerups[0] = 3;
-    memo1[start] = buxcards(0, 0);
-    auto maxxp = levels[$-1].nextLevelxp;
-    foreach(level ; 0 .. maxlevel-1)
+    start.xp = startingxp;
+    if(minlevel > 1)
+        start.xp += levels[minlevel - 2].nextLevelxp;
+    // ensure valid xp start
+    if(start.xp >= levels[minlevel - 1].nextLevelxp)
     {
+        writeln("invalid starting state at level ", minlevel, " and xp ", startingxp);
+        return 1;
+    }
+
+    auto powerarray = powerupargs
+        .split(',')
+        .map!(a => a.to!int)
+        .array;
+    // TODO: make sure the total number of powerups does not exceed valid ones
+    if(powerarray.length > 12)
+    {
+        writeln("invalid powerup args, only 12 powerup levels exist");
+        return 1;
+    }
+    start.powerups[0 .. powerarray.length] = powerarray[];
+    memo1[start] = buxcards(0, 0);
+    foreach(level ; minlevel-1 .. maxlevel-1)
+    {
+        //writefln("At level %s, there are %s different states", level + 1, memo1.length);
         auto ld = levels[level];
         // are we gaining a new powerup at this level
         auto newPowerup = ld.level > 1 && ld.level <= 37 && ((ld.level - 1) % 4 == 0);
@@ -229,12 +274,7 @@ skinloop:
 
                 // get to the next level
                 if(auto v = newstate in memo2)
-                {
-                    if(ld.level == 16 && skins == 6 && newBuxCards.bux == 5662 && newBuxCards.cards == 89 && newBuxCards < *v)
-                        writefln("here, orig state = %s, new state = %s, base bux = %s, new bux = %s", 
-                                 curstate, newstate, baseBux, newBuxCards);
                     *v = min(*v, newBuxCards);
-                }
                 else
                     memo2[newstate] = newBuxCards;
             }
@@ -287,4 +327,5 @@ skinloop:
             writefln("%s => %s", k, v);
     }
     printPath(&cheapest, maxlevel);
+    return 0;
 }
