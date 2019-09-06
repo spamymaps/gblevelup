@@ -2,7 +2,7 @@
 
 This application will tell you how to upgrade your GolfBlitz account in the most efficient way possible. By efficient, I mean with the least bux. At this point in time, it returns a result that NOBODY will ever take. This is simply because even though you spend less bux, you miss the benefit of the leveled-up powerups along the way. Because powerups are the least efficient purchase (see below), it defers upgrading powerups until very late, which nobody will want to do.
 
-To build, use the dub build tool, downloaded from [https://code.dlang.org](code.dlang.org).
+To build, use the dub build tool, downloaded from [code.dlang.org](https://code.dlang.org).
 
 Or you can simply download the binaries from the releases based on your platform I built the tool on MacOS, Linux, and Windows.
 
