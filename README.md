@@ -12,7 +12,7 @@ This uses dynamic programming to determine all possible paths to a given state. 
 
 With all upgrades possible, it could consume much more memory, but we are limiting powerup upgrades to always upgrading the lowest level powerup next. This turns out to actually be the most efficient bux-wise as well, since lower level powerup upgrades are always more efficient than higher level ones (that is, the bux/xp ratio is always higher for later upgrades).
 
-The more levels you wish to upgrade through, the longer the code runs and the more memory it needs. This is due to the increasing number of paths that can reach that level. On my Macbook Pro, it takes 20 seconds to create the optimal path, and uses 1GB of memory.
+The more levels you wish to upgrade through, the longer the code runs and the more memory it needs. This is due to the increasing number of paths that can reach that level. On my Macbook Pro, it takes 20 seconds to create the optimal path from level 1 to 50, and uses 1GB of memory.
 
 ## Options
 
