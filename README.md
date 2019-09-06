@@ -6,6 +6,8 @@ To build, use the dub build tool, downloaded from [code.dlang.org](https://code.
 
 Or you can simply download the binaries from the [releases](https://github.com/schveiguy/gblevelup/releases) based on your platform I built the tool on MacOS, Linux, and Windows.
 
+BIG NOTE: This is a COMMAND LINE application, which is very boring, but easy to write. If you are a visual person and try to run this by double clicking on it, be prepared for a window to come up and go away, and nothing left for you to see. In order to run this properly, you need to run a terminal program (or command line tool on Windows), and run it from there.
+
 ## How it works
 
 This uses dynamic programming to determine all possible paths to a given state. A state is defined by the amount of cumulative XP, and the number of powerups at each level. The Dynamic Programming algorithm eliminates paths that are suboptimal by progressing one level at a time, thereby eliminating duplicates early. Each level is stored into a hash table, since the realm of possibilities is pretty sparse.
