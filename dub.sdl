@@ -1,0 +1,5 @@
+name "gblevelup"
+description "App to determine minimal bux for upgrading your golf blitz account."
+authors "Steven Schveighoffer"
+copyright "Copyright © 2019, Steven Schveighoffer"
+license "Boost 1.0"

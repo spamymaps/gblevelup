@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/gblevelup
+gblevelup.so
+gblevelup.dylib
+gblevelup.dll
+gblevelup.a
+gblevelup.lib
+gblevelup-test-*
+*.exe
+*.o
+*.obj
+*.lst
