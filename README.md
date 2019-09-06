@@ -4,7 +4,7 @@ This application will tell you how to upgrade your GolfBlitz account in the most
 
 To build, use the dub build tool, downloaded from [code.dlang.org](https://code.dlang.org).
 
-Or you can simply download the binaries from the releases based on your platform I built the tool on MacOS, Linux, and Windows.
+Or you can simply download the binaries from the [releases](releases) based on your platform I built the tool on MacOS, Linux, and Windows.
 
 ## How it works
 
