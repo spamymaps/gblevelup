@@ -116,17 +116,19 @@ struct state
     void printPowerups(void delegate(const(char)[]) dg)
     {
         import std.format;
-        auto fpu = powerups[]
-            .enumerate
-            .filter!(a => a[1] != 0);
+        //auto fpu = powerups[]
+        //    .enumerate
+        //    .filter!(a => a[1] != 0);
         bool first = true;
-        foreach(x; fpu)
+        dg("[");
+        foreach(i; 0 .. powerups.length)
         {
             if(!first)
                 dg(", ");
             first = false;
-            formattedWrite(dg, "%s lv%s", x[1], x[0] + 1 );
+            formattedWrite(dg, "%s", powerups[i]);
         }
+        dg("]");
     }
     void toString(void delegate(const(char)[]) dg)
     {
@@ -177,8 +179,26 @@ int buyPowerup(ref state s)
     return 0;
 }
 
+//check if we have any upgrade lower than our threshold - return that index if yes, otherwise return 99
+int checkifupgradebelow(ref state s, int upgradelvl)
+{
+    import std.stdio;
+    foreach(i; 0 .. upgradelvl -1 )
+    
+    {
+        //writeln(" " , i, " ", ldbux);
+        if(s.powerups[i])
+        {
+            return i;
+        }
+    }
+    return 99;
+}
+
+
 int main(string[] args)
 {
+    
     import std.stdio;
     import std.getopt; // well, it's just easier
     int maxlevel = 50;
@@ -207,7 +227,6 @@ int main(string[] args)
         writeln("need min level between 1 and ", maxlevel);
         return 1;
     }
-
     // first, fix the level up xp numbers, we want cumulative xp
     foreach(i; 1 .. levels.length)
         levels[i].nextLevelxp += levels[i-1].nextLevelxp;
@@ -243,40 +262,108 @@ int main(string[] args)
         auto ld = levels[level];
         // are we gaining a new powerup at this level
         auto newPowerup = ld.level > 1 && ld.level <= 37 && ((ld.level - 1) % 4 == 0);
+        //writeln(" At level %s, %s" , ld.level, newPowerup);
         foreach(curstate, ref baseBux; memo1)
         {
             if(newPowerup)
                 // new level 1 powerup
                 ++curstate.powerups[0];
-
-            // maxSkins is the maximum number of skins needed to level up to
-            // the next level if all we did was buy skins.
-            int maxSkins = ((ld.nextLevelxp - curstate.xp) + ld.xp - 1) / ld.xp;
-
-skinloop:
-            foreach(skins; 0 .. maxSkins + 1)
+            
+            //moved these up here so we can do a split search method
+            auto newstate = curstate;
+            auto newBuxCards = baseBux;
+            newBuxCards.prev = &baseBux;
+            //if we're levels 1-10, look for powerup upgrades at 5 or less
+            if (ld.level <= 10)
             {
-                // buy this many skins
-                auto newstate = curstate;
-                newstate.xp += ld.xp * skins;
-                auto newBuxCards = baseBux;
-                newBuxCards.prev = &baseBux;
-                newBuxCards.bux += skins * ld.bux;
-                newBuxCards.cards += skins;
-                while(newstate.xp < ld.nextLevelxp)
+                //writefln(curstate.powerups);
+                bool upgradavailable = true;
+                while (newstate.xp < ld.nextLevelxp && upgradavailable == true )
                 {
-                    auto b = buyPowerup(newstate);
-                    if(b == 0)
-                        // can't buy any more powerups, so this possibility isn't valid (this probably won't happen)
-                        continue skinloop;
-                    newBuxCards.bux += b;
+                    //find lowest available powerup to upgrade:
+                    auto up = checkifupgradebelow(newstate, 5);
+                    //writeln("upgrade " , up);
+                    if (up < 20)
+                    {
+                        auto b = buyPowerup(newstate);
+                        newBuxCards.bux += b;
+                    }
+                    else 
+                    {
+                        upgradavailable = false;
+                    }
                 }
-
+                
+                
+                
+            }
+            
+            //at this point under level 10 we should have bought some number of powerups if they're avaialable under level 5
+            
+        
+            //debug printout
+            if (ld.level == 10)
+            {
+                writeln("xp ", newstate.xp, " nextxp ", ld.nextLevelxp, " bux ", newBuxCards.bux, " cards ", newBuxCards.cards, " prev cards " , newBuxCards.prev.cards);
+            }
+                
+            //if we've reached the next level from just powerups, then just do the dictionary update here
+            if (newstate.xp >= ld.nextLevelxp)
+            {
+                //debug print out stuff trying to debug level 10
+                if (ld.level == 10)
+                {    
+                    writeln("skipping checking skin cards");
+                    string powerupUpgrades;
+                    newstate.printPowerups((s) {powerupUpgrades ~= s;});
+                    writefln("At level %s, %s %s purchase %s skins, and upgrade powerups to %s", ld.level, newBuxCards.bux, newstate.xp , 0, powerupUpgrades);
+                }
                 // get to the next level
                 if(auto v = newstate in memo2)
                     *v = min(*v, newBuxCards);
                 else
                     memo2[newstate] = newBuxCards;
+            }
+            // we didn't reach the next level with just powerups so do the normal skin stuff
+            else
+            {
+                // maxSkins is the maximum number of skins needed to level up to
+                // the next level if all we did was buy skins.
+                int maxSkins = ((ld.nextLevelxp - newstate.xp) + ld.xp - 1) / ld.xp;
+
+    skinloop:
+                foreach(skins; 0 .. maxSkins + 1)
+                {
+                    // buy this many skins
+                    //auto newstate = curstate;
+                    newstate.xp += ld.xp * skins;
+                    //auto newBuxCards = baseBux;
+                    //newBuxCards.prev = &baseBux;
+                    newBuxCards.bux += skins * ld.bux;
+                    newBuxCards.cards += skins;
+                    while(newstate.xp <= ld.nextLevelxp)
+                    {
+                        auto b = buyPowerup(newstate);
+                        if(b == 0)
+                            // can't buy any more powerups, so this possibility isn't valid (this probably won't happen)
+                            continue skinloop;
+                        newBuxCards.bux += b;
+                    }
+                    
+                    //debug print
+                    if (ld.level == 10)
+                    {    
+                        writeln("skipping checking skin cards");
+                        string powerupUpgrades;
+                        newstate.printPowerups((s) {powerupUpgrades ~= s;});
+                        writefln("At level %s, %s %s purchase %s skins, and upgrade powerups to %s", ld.level, newBuxCards.bux, newstate.xp , skins, powerupUpgrades);
+                    }
+                    // get to the next level
+                    if(auto v = newstate in memo2)
+                        *v = min(*v, newBuxCards);
+                    else
+                        memo2[newstate] = newBuxCards;
+                }
             }
         }
 
@@ -300,6 +387,8 @@ skinloop:
         // print the difference between the previous level and this level
         string powerupUpgrades;
         auto nskins = cur.cards - cur.prev.cards;
+        //debug printing
+        writeln("cards " , cur.cards, " prevcards", cur.prev.cards);
         import std.stdio;
         //writefln("origBux = %s", cur.prev.bux);
         //writefln("%s skins at level %s paid = %s", nskins, level-1, levels[level-2].bux * nskins);
@@ -318,7 +407,8 @@ skinloop:
             ++st.powerups[0];
         }
         st.printPowerups((s) {powerupUpgrades ~= s;});
-        writefln("At level %s, purchase %s skins, and upgrade powerups to %s", level - 1, nskins, powerupUpgrades);
+        //added in bux per level for debug
+        writefln("At level %s, %s, purchase %s skins, and upgrade powerups to %s", level - 1, cur.bux, nskins, powerupUpgrades);
         return st;
     }
     foreach(k, v; memo1)
