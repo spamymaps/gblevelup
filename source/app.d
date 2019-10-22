@@ -242,12 +242,17 @@ int main(string[] args)
         //writefln("At level %s, there are %s different states", level + 1, memo1.length);
         auto ld = levels[level];
         // are we gaining a new powerup at this level
-        auto newPowerup = ld.level > 1 && ld.level <= 37 && ((ld.level - 1) % 4 == 0);
+        //auto newPowerup = ld.level != minlevel && ld.level > 1 && ld.level <= 37 && ((ld.level - 1) % 4 == 0);
+        //auto newPowerup =  ((((ld.level + 1)  > 1) && ((ld.level + 1) <= 29) && ((ld.level) % 4 == 0)) || (((ld.level + 1) > 29) && ((ld.level + 1) <= 39) && ((ld.level) % 2 == 0)) || (ld.level + 1 == 45));
+        //auto newPowerup =  ((((ld.level + 1)  > 1) && ((ld.level + 1) <= 37) && ((ld.level) % 4 == 0)));// || (((ld.level + 1) > 37) && ((ld.level + 1) <= 45) && ((ld.level) % 2 == 0)));
+        //move to just a list of levels where the powerups happen
+        auto newPowerup = [5, 9, 13, 17, 21, 25, 29, 31, 33, 35, 37, 39, 45].canFind(ld.level + 1);
+
         foreach(curstate, ref baseBux; memo1)
         {
-            if(newPowerup)
-                // new level 1 powerup
-                ++curstate.powerups[0];
+           // if(newPowerup)
+            //    // new level 1 powerup
+            //    ++curstate.powerups[0];
 
             // maxSkins is the maximum number of skins needed to level up to
             // the next level if all we did was buy skins.
@@ -273,6 +278,8 @@ skinloop:
                 }
 
                 // get to the next level
+                if(newPowerup)
+                    ++newstate.powerups[0];
                 if(auto v = newstate in memo2)
                     *v = min(*v, newBuxCards);
                 else
@@ -312,13 +319,18 @@ skinloop:
             writefln("expected %s, but got %s, cards = %s, prev = %s, new = %s", cur.bux, buxspent, cur.cards, origst, st);
             assert(false);
         }
-        if(level > 1 && level <= 37 && ((level - 1) % 4 == 0))
+        //move the print before adding the new powerup so the new powerup shows up in the right level
+        st.printPowerups((s) {powerupUpgrades ~= s;});
+        writefln("At level %s, purchase %s skins, and upgrade powerups to %s", level - 1, nskins, powerupUpgrades);
+        //if((level > 1 && level <= 29 && ((level - 1) % 4 == 0)) || (level > 29 && level <= 39 && ((level - 1) % 2 == 0)) || (level == 45))
+ //       if((level > 1 && level <= 37 && ((level - 1) % 4 == 0))) // || (level > 37 && level <= 45 && ((level - 1) % 2 == 0)))
+ //move to just a list of power up levels
+        if ([5, 9, 13, 17, 21, 25, 29, 31, 33, 35, 37, 39, 45].canFind(level))
+
         {
             // new powerup
             ++st.powerups[0];
         }
-        st.printPowerups((s) {powerupUpgrades ~= s;});
-        writefln("At level %s, purchase %s skins, and upgrade powerups to %s", level - 1, nskins, powerupUpgrades);
         return st;
     }
     foreach(k, v; memo1)
