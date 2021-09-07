@@ -185,18 +185,32 @@ int main(string[] args)
     int minlevel = 1;
     int startingxp;
     string powerupargs = "3";
+    int tunnelunlocked = 0;
+    int printall = 0;
+    auto poweruplevels = [5, 9, 13, 17, 19, 21, 25, 29, 31, 33, 35, 37, 39, 45];
     auto helpInformation = getopt(
       args,
       "max",  &maxlevel,
       "min", &minlevel,
       "xp", &startingxp,
-      "powerups", &powerupargs);
+      "powerups", &powerupargs,
+      "tunnel", &tunnelunlocked,
+      "printall", &printall);
 
     if (helpInformation.helpWanted)
     {
         defaultGetoptPrinter("Calculate golf blitz minimum bux/cards requirements to get to a specific level",
                              helpInformation.options);
     }
+    if (tunnelunlocked > 0)
+    {
+        poweruplevels = [5, 9, 13, 17, 19, 21, 25, 29, 31, 33, 35, 37, 39];
+    }
+    //if (printall > 0)
+    //{
+    //    printall = 1;
+    //}
+        
     if(maxlevel < 1 || maxlevel > 50)
     {
         writeln("need max level between 1 and 50");
@@ -246,7 +260,7 @@ int main(string[] args)
         //auto newPowerup =  ((((ld.level + 1)  > 1) && ((ld.level + 1) <= 29) && ((ld.level) % 4 == 0)) || (((ld.level + 1) > 29) && ((ld.level + 1) <= 39) && ((ld.level) % 2 == 0)) || (ld.level + 1 == 45));
         //auto newPowerup =  ((((ld.level + 1)  > 1) && ((ld.level + 1) <= 37) && ((ld.level) % 4 == 0)));// || (((ld.level + 1) > 37) && ((ld.level + 1) <= 45) && ((ld.level) % 2 == 0)));
         //move to just a list of levels where the powerups happen
-        auto newPowerup = [5, 9, 13, 17, 21, 25, 29, 31, 33, 35, 37, 39, 45].canFind(ld.level + 1);
+        auto newPowerup = poweruplevels.canFind(ld.level + 1);
 
         foreach(curstate, ref baseBux; memo1)
         {
@@ -321,22 +335,41 @@ skinloop:
         }
         //move the print before adding the new powerup so the new powerup shows up in the right level
         st.printPowerups((s) {powerupUpgrades ~= s;});
-        writefln("At level %s, purchase %s skins, and upgrade powerups to %s", level - 1, nskins, powerupUpgrades);
+        writefln("At level %s, purchase %s skins, and upgrade powerups to %s, running cost = %s", level - 1, nskins, powerupUpgrades, cur.bux);
         //if((level > 1 && level <= 29 && ((level - 1) % 4 == 0)) || (level > 29 && level <= 39 && ((level - 1) % 2 == 0)) || (level == 45))
  //       if((level > 1 && level <= 37 && ((level - 1) % 4 == 0))) // || (level > 37 && level <= 45 && ((level - 1) % 2 == 0)))
  //move to just a list of power up levels
-        if ([5, 9, 13, 17, 21, 25, 29, 31, 33, 35, 37, 39, 45].canFind(level))
-
+        if (poweruplevels.canFind(level))
+        
         {
             // new powerup
             ++st.powerups[0];
         }
         return st;
     }
+    if (printall > 0)
+    {
+        auto c = 0;
+        auto arr = memo1.byKeyValue.array;
+        arr.sort!((a, b) => a.value < b.value); // sort by value
+        foreach(k;  arr) //printPath(&v, maxlevel);
+        {
+            writefln("---------------");
+        writefln("%s => %s", k.key, k.value );
+            printPath(&memo1[k.key], maxlevel);
+            c+=1;
+            if (c > printall) break;
+        }
+    }
     foreach(k, v; memo1)
     {
         if(v == cheapest)
-            writefln("%s => %s", k, v);
+	{
+	        writefln("---------------");
+		writefln("cheapestoption:");
+		writefln("%s => %s", k, v);
+	}	
+
     }
     printPath(&cheapest, maxlevel);
     return 0;
