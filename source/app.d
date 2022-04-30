@@ -187,7 +187,7 @@ int main(string[] args)
     string powerupargs = "3";
     int tunnelunlocked = 0;
     int printall = 0;
-    auto poweruplevels = [5, 9, 13, 17, 19, 21, 25, 29, 31, 33, 35, 37, 39, 45];
+    auto poweruplevels = [5, 9, 13, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 45];
     auto helpInformation = getopt(
       args,
       "max",  &maxlevel,
@@ -204,7 +204,7 @@ int main(string[] args)
     }
     if (tunnelunlocked > 0)
     {
-        poweruplevels = [5, 9, 13, 17, 19, 21, 25, 29, 31, 33, 35, 37, 39];
+        poweruplevels = [5, 9, 13, 17, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39];
     }
     //if (printall > 0)
     //{
